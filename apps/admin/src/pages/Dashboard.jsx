@@ -71,15 +71,43 @@ export default function Dashboard() {
 
   // Aggiorna le statistiche quando arrivano i dati
   useEffect(() => {
-    if (usersData) {
-      setStats(prev => ({ ...prev, users: usersData.pagination.totalItems }));
-    }
-    if (tracksData) {
-      setStats(prev => ({ ...prev, tracks: tracksData.pagination.totalItems }));
-    }
-    if (photosData) {
-      setStats(prev => ({ ...prev, photos: photosData.pagination.totalItems }));
-    }
+    const updateStats = () => {
+      // Log API responses to help debug
+      console.log('API Responses:', { 
+        usersData, 
+        tracksData, 
+        photosData 
+      });
+      
+      // Get total users count
+      const usersCount = usersData?.pagination?.totalItems || 
+                         usersData?.total || 
+                         0;
+      
+      // Get total tracks count
+      const tracksCount = tracksData?.pagination?.totalItems || 
+                          tracksData?.total || 
+                          0;
+      
+      // Get total photos count
+      const photosCount = photosData?.pagination?.totalItems || 
+                          photosData?.total || 
+                          0;
+      
+      console.log('Extracted counts:', {
+        usersCount,
+        tracksCount,
+        photosCount
+      });
+      
+      setStats({
+        users: usersCount,
+        tracks: tracksCount,
+        photos: photosCount
+      });
+    };
+    
+    updateStats();
   }, [usersData, tracksData, photosData]);
 
   return (

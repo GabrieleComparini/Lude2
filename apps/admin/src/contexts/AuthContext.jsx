@@ -27,7 +27,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setError(null);
     try {
+      console.log('Tentativo di login con:', email);
       const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login Firebase riuscito, utente:', result.user.uid);
       return result.user;
     } catch (err) {
       console.error('Login error:', err);
@@ -66,12 +68,26 @@ export const AuthProvider = ({ children }) => {
     if (!user) return null;
     
     try {
+      console.log('Sincronizzazione utente con backend:', user.email);
       const token = await user.getIdToken();
+      console.log('Token Firebase ottenuto');
+      
       const response = await authService.syncUser(token);
-      setUserData(response.user);
-      return response.user;
+      console.log('Risposta dal backend:', response);
+      
+      if (response && response.user) {
+        console.log('Utente sincronizzato con ruolo:', response.user.role);
+        setUserData(response.user);
+        return response.user;
+      } else {
+        console.error('Risposta dal backend non contiene dati utente validi');
+        return null;
+      }
     } catch (err) {
       console.error('Sync user error:', err);
+      if (err.response) {
+        console.error('Dettagli errore backend:', err.response.data);
+      }
       setError(err.message || 'Errore di sincronizzazione con il backend');
       return null;
     }
@@ -79,16 +95,20 @@ export const AuthProvider = ({ children }) => {
 
   // Verifica se l'utente è admin
   const isAdmin = () => {
-    return userData?.role === 'admin';
+    const isAdminUser = userData?.role === 'admin';
+    console.log('Verifica ruolo admin:', { userData, isAdmin: isAdminUser });
+    return isAdminUser;
   };
 
   // Osserva cambiamenti stato autenticazione
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Stato autenticazione cambiato:', user ? `Utente loggato (${user.email})` : 'Nessun utente');
       setCurrentUser(user);
       
       if (user) {
-        await syncUserWithBackend(user);
+        const userDataFromBackend = await syncUserWithBackend(user);
+        console.log('Dati utente dal backend:', userDataFromBackend);
       } else {
         setUserData(null);
       }

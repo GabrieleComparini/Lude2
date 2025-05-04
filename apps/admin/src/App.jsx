@@ -14,11 +14,20 @@ import TracksList from './pages/tracks/TracksList';
 import TrackDetails from './pages/tracks/TrackDetails';
 import PhotosList from './pages/photos/PhotosList';
 import PhotoDetails from './pages/photos/PhotoDetails';
+import ApiTester from './pages/ApiTester';
 import NotFound from './pages/NotFound';
 
 // Route privata che richiede autenticazione
 const PrivateRoute = ({ children }) => {
   const { currentUser, userData, loading } = useAuth();
+
+  console.log('PrivateRoute check:', { 
+    currentUser: currentUser ? 'presente' : 'assente', 
+    userData: userData ? 'presente' : 'assente',
+    userRole: userData?.role,
+    isAdmin: userData?.role === 'admin',
+    loading
+  });
 
   if (loading) {
     return (
@@ -30,9 +39,11 @@ const PrivateRoute = ({ children }) => {
 
   // Se non c'è un utente autenticato o non è admin, reindirizza al login
   if (!currentUser || !userData || userData.role !== 'admin') {
+    console.log('Accesso negato, reindirizzamento al login');
     return <Navigate to="/login" replace />;
   }
 
+  console.log('Accesso consentito alla dashboard');
   return children;
 };
 
@@ -65,6 +76,9 @@ export default function App() {
         {/* Rotte foto */}
         <Route path="/photos" element={<PhotosList />} />
         <Route path="/photos/:id" element={<PhotoDetails />} />
+        
+        {/* Strumenti di sviluppo */}
+        <Route path="/api-tester" element={<ApiTester />} />
       </Route>
 
       {/* Pagina 404 */}

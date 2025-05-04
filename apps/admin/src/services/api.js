@@ -1,9 +1,15 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
 
+// Helper to normalize URL by removing trailing slash if present
+const normalizeBaseUrl = (url) => {
+  if (!url) return '';
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+};
+
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: `${normalizeBaseUrl(import.meta.env.VITE_API_URL)}/api` || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,7 +77,15 @@ api.interceptors.response.use(
 // API Services
 export const authService = {
   syncUser: async (token) => {
-    return api.post('/auth/sync', { token });
+    console.log('authService.syncUser chiamato con token');
+    try {
+      const result = await api.post('/auth/sync', { token });
+      console.log('authService.syncUser risposta:', result);
+      return result;
+    } catch (error) {
+      console.error('authService.syncUser errore:', error);
+      throw error;
+    }
   },
   verifyToken: async () => {
     return api.get('/auth/verify');
@@ -88,18 +102,41 @@ export const userService = {
   updateCurrentUser: async (data) => {
     return api.put('/users/me', data);
   },
-  updateProfileImage: async (formData) => {
-    return api.put('/users/me/profile-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  updateProfileImage: async (userId, formData) => {
+    if (userId === 'me') {
+      return api.put('/users/me/profile-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    } else {
+      return api.put(`/users/${userId}/profile-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
   },
   getUserByUsername: async (username) => {
     return api.get(`/users/${username}`);
   },
+  getUserById: async (id) => {
+    return api.get(`/users/${id}`);
+  },
   listUsers: async (params) => {
-    return api.get('/users/list', { params });
+    return api.get('/users', { params });
+  },
+  createUser: async (userData) => {
+    return api.post('/users', userData);
+  },
+  updateUser: async (id, userData) => {
+    return api.put(`/users/${id}`, userData);
+  },
+  deleteUser: async (id) => {
+    return api.delete(`/users/${id}`);
+  },
+  updateUserRole: async (id, role) => {
+    return api.put(`/users/${id}/role`, { role });
   },
   followUser: async (id) => {
     return api.post(`/users/${id}/follow`);

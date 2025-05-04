@@ -338,4 +338,52 @@ router.put('/:id/role', protect, adminOnly, asyncHandler(async (req, res) => {
   });
 }));
 
+/**
+ * @route   POST /api/users
+ * @desc    Crea un nuovo utente (richiede admin)
+ * @access  Admin
+ */
+router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
+  const { email, username, name, bio, role, preferences, firebaseUid } = req.body;
+  
+  // Validazione
+  if (!email || !username || !name) {
+    throw createError('Email, username e nome sono obbligatori', 400);
+  }
+  
+  // Verifica se email e username sono già in uso
+  const emailExists = await User.findOne({ email });
+  if (emailExists) {
+    throw createError('Email già in uso', 400);
+  }
+  
+  const usernameExists = await User.findOne({ username });
+  if (usernameExists) {
+    throw createError('Username già in uso', 400);
+  }
+  
+  // Genera un firebaseUid casuale per utenti creati manualmente (senza autenticazione Firebase)
+  const generatedFirebaseUid = firebaseUid || `manual_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  
+  // Crea il nuovo utente
+  const newUser = new User({
+    email,
+    username,
+    name,
+    bio: bio || '',
+    role: role || 'user',
+    firebaseUid: generatedFirebaseUid,
+    preferences,
+    lastLogin: new Date()
+  });
+  
+  await newUser.save();
+  
+  res.status(201).json({
+    success: true,
+    message: 'Utente creato con successo',
+    user: newUser
+  });
+}));
+
 module.exports = router; 

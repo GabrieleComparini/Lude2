@@ -33,6 +33,14 @@ export default function UsersList() {
             Lista di tutti gli utenti registrati sulla piattaforma.
           </p>
         </div>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+          <Link
+            to="/users/new"
+            className="btn btn-primary"
+          >
+            Nuovo Utente
+          </Link>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -197,7 +205,7 @@ export default function UsersList() {
             </button>
             <button
               onClick={() => setPage(page + 1)}
-              disabled={!data.pagination?.hasNextPage}
+              disabled={!(data?.pagination?.hasNextPage === true)}
               className="btn btn-outline"
             >
               Successiva
@@ -206,11 +214,17 @@ export default function UsersList() {
           <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">{(page - 1) * limit + 1}</span> a{' '}
-                <span className="font-medium">
-                  {Math.min(page * limit, data.pagination?.totalItems)}
-                </span>{' '}
-                di <span className="font-medium">{data.pagination?.totalItems}</span> utenti
+                {data?.pagination?.totalItems > 0 ? (
+                  <>
+                    Mostrando <span className="font-medium">{Math.max(1, (page - 1) * limit + 1)}</span> a{' '}
+                    <span className="font-medium">
+                      {Math.min(page * limit, data?.pagination?.totalItems || 0)}
+                    </span>{' '}
+                    di <span className="font-medium">{data?.pagination?.totalItems || 0}</span> utenti
+                  </>
+                ) : (
+                  'Nessun utente trovato'
+                )}
               </p>
             </div>
             <div>
@@ -223,9 +237,9 @@ export default function UsersList() {
                   <span className="sr-only">Precedente</span>
                   &larr;
                 </button>
-                {Array.from({ length: Math.min(5, data.pagination?.totalPages || 1) }).map((_, i) => {
+                {Array.from({ length: Math.min(5, data?.pagination?.totalPages || 1) }).map((_, i) => {
                   const pageNum = page <= 3 ? i + 1 : page - 2 + i;
-                  if (pageNum <= data.pagination?.totalPages) {
+                  if (pageNum <= (data?.pagination?.totalPages || 1)) {
                     return (
                       <button
                         key={pageNum}
@@ -244,7 +258,7 @@ export default function UsersList() {
                 })}
                 <button
                   onClick={() => setPage(page + 1)}
-                  disabled={!data.pagination?.hasNextPage}
+                  disabled={!(data?.pagination?.hasNextPage === true)}
                   className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
                 >
                   <span className="sr-only">Successiva</span>

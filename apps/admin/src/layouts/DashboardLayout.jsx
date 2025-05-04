@@ -8,6 +8,7 @@ import {
   MapIcon,
   PhotoIcon,
   XMarkIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +30,7 @@ export default function DashboardLayout() {
     { name: 'Utenti', href: '/users', icon: UsersIcon },
     { name: 'Tracce', href: '/tracks', icon: MapIcon },
     { name: 'Foto', href: '/photos', icon: PhotoIcon },
+    { name: 'API Tester', href: '/api-tester', icon: BeakerIcon },
   ];
 
   // Funzione per il logout
