@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const photoController = require('../controllers/photoController');
-const uploadMiddleware = require('../middleware/uploadMiddleware');
+const { uploadToCloudinary } = require('../middleware/uploadMiddleware');
 
 /**
  * @route   POST /api/photos
  * @desc    Carica una nuova foto
  * @access  Private
  */
-router.post('/', protect, uploadMiddleware.single('image'), photoController.uploadPhoto);
+router.post('/', protect, uploadToCloudinary('image', { folder: 'lude/photos' }), photoController.uploadPhoto);
 
 /**
  * @route   GET /api/photos

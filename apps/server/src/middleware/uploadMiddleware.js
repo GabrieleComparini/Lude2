@@ -1,4 +1,6 @@
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
 const fs = require('fs');
 const { createError } = require('./errorMiddleware');
@@ -10,34 +12,60 @@ if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir, { recursive: true });
 }
 
-// Configurazione storage per Multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, tmpDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+// Configurazione di Cloudinary (dovrebbe essere già configurato in config/cloudinary.js)
+// Utilizzo diretto qui in caso di deploy dove potrebbe non caricare la configurazione in tempo
+
+// Configurazione dello storage per Multer che usa Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'lude/photos',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    transformation: [
+      { width: 1200, height: 1200, crop: 'limit' }, // Immagine principale
+    ],
+    eager: [
+      { width: 300, height: 300, crop: 'fill' } // Thumbnail
+    ]
   }
 });
 
-// Filtro file per accettare solo immagini
+// Configurazione alternativa con storage locale temporaneo (fallback)
+const localStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../tmp/uploads'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// Filtro per i file
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  
-  if (allowedMimes.includes(file.mimetype)) {
+  // Accetta solo immagini
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(createError('Tipo di file non supportato. Caricare solo immagini (JPEG, PNG, GIF, WEBP).', 400), false);
+    cb(new Error('Solo immagini sono permesse!'), false);
   }
 };
 
-// Inizializza multer con le configurazioni
+// Middleware Multer con storage Cloudinary
 const upload = multer({
-  storage,
-  fileFilter,
-  limits: { 
-    fileSize: 10 * 1024 * 1024, // 10MB 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  }
+});
+
+// Middleware Multer con storage locale (fallback)
+const localUpload = multer({
+  storage: localStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
   }
 });
 
@@ -48,51 +76,41 @@ const upload = multer({
  */
 const uploadToCloudinary = (fieldName, options = {}) => {
   return async (req, res, next) => {
-    // Prima utilizza multer per salvare temporaneamente il file
+    // Usa 'upload' configurato con Cloudinary
     upload.single(fieldName)(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
-          // Errore di Multer (file troppo grande, ecc.)
-          return next(createError(`Errore upload: ${err.message}`, 400));
+          return res.status(400).json({
+            success: false,
+            message: `Errore di upload: ${err.message}`
+          });
         }
-        return next(err);
+        return res.status(500).json({
+          success: false,
+          message: `Errore del server: ${err.message}`
+        });
       }
-      
-      // Se non c'è nessun file, continua
+
+      // Nessun file caricato
       if (!req.file) {
         return next();
       }
-      
-      try {
-        // Opzioni di upload specifiche per il tipo di immagine
-        const uploadOptions = {
-          folder: options.folder || 'lude',
-          ...options
-        };
-        
-        // Carica il file su Cloudinary
-        const result = await uploadImage(req.file.path, uploadOptions);
-        
-        // Aggiunge i dati di Cloudinary alla request
-        req.cloudinaryResult = result;
-        
-        // Rimuove il file temporaneo
-        fs.unlinkSync(req.file.path);
-        
-        next();
-      } catch (error) {
-        // Rimuove il file temporaneo in caso di errore
-        if (req.file && fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
-        
-        next(createError(`Errore nel caricamento dell'immagine: ${error.message}`, 500));
-      }
+
+      // Il file è già stato caricato su Cloudinary da multer-storage-cloudinary
+      // req.file contiene già i metadati di Cloudinary
+      req.cloudinaryResult = {
+        secure_url: req.file.path,
+        public_id: req.file.filename,
+        eager: req.file.eager || []
+      };
+
+      next();
     });
   };
 };
 
 module.exports = {
   upload,
+  localUpload,
   uploadToCloudinary
 }; 
