@@ -406,4 +406,24 @@ router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
   }
 }));
 
+/**
+ * @route   GET /api/users/id/:id
+ * @desc    Ottiene un utente tramite ID (solo per admin)
+ * @access  Admin
+ */
+router.get('/id/:id', protect, adminOnly, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const user = await User.findById(id);
+  
+  if (!user) {
+    throw createError('Utente non trovato', 404);
+  }
+  
+  res.status(200).json({
+    success: true,
+    user
+  });
+}));
+
 module.exports = router; 

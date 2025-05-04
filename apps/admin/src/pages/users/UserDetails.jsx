@@ -23,10 +23,16 @@ export default function UserDetails() {
       try {
         setLoading(true);
         const response = await userService.getUserById(id);
-        setUser(response.data);
+        
+        // Handle the nested user object in the response
+        if (response.success && response.user) {
+          setUser(response.user);
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
-        setError(error.response?.data?.message || 'Failed to load user details');
+        setError(error.message || 'Failed to load user details');
         toast.error('Error loading user details');
       } finally {
         setLoading(false);
@@ -43,7 +49,9 @@ export default function UserDetails() {
       navigate(`/users/${result.user._id}`);
     } else {
       // Update local state with updated user data
-      setUser(result.user);
+      if (result.user) {
+        setUser(result.user);
+      }
       toast.success('User updated successfully');
     }
   };

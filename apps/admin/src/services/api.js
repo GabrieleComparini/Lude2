@@ -121,7 +121,7 @@ export const userService = {
     return api.get(`/users/${username}`);
   },
   getUserById: async (id) => {
-    return api.get(`/users/${id}`);
+    return api.get(`/users/id/${id}`);
   },
   listUsers: async (params) => {
     return api.get('/users', { params });
