@@ -20,6 +20,7 @@ export default function UserForm({ user, onSuccess, onCancel }) {
       username: '',
       name: '',
       bio: '',
+      password: '',
       role: 'user',
       preferences: {
         unitSystem: 'metric',
@@ -193,6 +194,27 @@ export default function UserForm({ user, onSuccess, onCancel }) {
             />
             {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>}
           </div>
+
+          {/* Password field - only show when creating a new user */}
+          {!user && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                {...register('password', {
+                  required: 'Password is required when creating a new user',
+                  minLength: {
+                    value: 6,
+                    message: 'Password must be at least 6 characters'
+                  }
+                })}
+                className={`mt-1 block w-full rounded-md border ${errors.password ? 'border-red-300' : 'border-gray-300'} shadow-sm p-2`}
+              />
+              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700">

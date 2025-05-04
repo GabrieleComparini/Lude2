@@ -4,6 +4,7 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { asyncHandler, createError } = require('../middleware/errorMiddleware');
 const { uploadToCloudinary } = require('../middleware/uploadMiddleware');
 const User = require('../models/User');
+const admin = require('../config/firebaseAdmin');
 
 /**
  * @route   GET /api/users/profile
@@ -344,11 +345,15 @@ router.put('/:id/role', protect, adminOnly, asyncHandler(async (req, res) => {
  * @access  Admin
  */
 router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
-  const { email, username, name, bio, role, preferences, firebaseUid } = req.body;
+  const { email, username, name, bio, role, preferences, password } = req.body;
   
   // Validazione
   if (!email || !username || !name) {
     throw createError('Email, username e nome sono obbligatori', 400);
+  }
+
+  if (!password) {
+    throw createError('La password è obbligatoria', 400);
   }
   
   // Verifica se email e username sono già in uso
@@ -362,28 +367,43 @@ router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
     throw createError('Username già in uso', 400);
   }
   
-  // Genera un firebaseUid casuale per utenti creati manualmente (senza autenticazione Firebase)
-  const generatedFirebaseUid = firebaseUid || `manual_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  
-  // Crea il nuovo utente
-  const newUser = new User({
-    email,
-    username,
-    name,
-    bio: bio || '',
-    role: role || 'user',
-    firebaseUid: generatedFirebaseUid,
-    preferences,
-    lastLogin: new Date()
-  });
-  
-  await newUser.save();
-  
-  res.status(201).json({
-    success: true,
-    message: 'Utente creato con successo',
-    user: newUser
-  });
+  try {
+    // Crea prima l'utente in Firebase
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: password,
+      displayName: name,
+      emailVerified: true
+    });
+    
+    // Assegna ruolo in Firebase (opzionale)
+    if (role === 'admin') {
+      await admin.auth().setCustomUserClaims(userRecord.uid, { admin: true });
+    }
+    
+    // Crea il nuovo utente nel database MongoDB con l'UID reale di Firebase
+    const newUser = new User({
+      email,
+      username,
+      name,
+      bio: bio || '',
+      role: role || 'user',
+      firebaseUid: userRecord.uid, // Usa l'UID reale
+      preferences,
+      lastLogin: new Date()
+    });
+    
+    await newUser.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Utente creato con successo in Firebase e nel database',
+      user: newUser
+    });
+  } catch (error) {
+    // Gestisci errori specifici di Firebase
+    throw createError(`Errore nella creazione utente in Firebase: ${error.message}`, 400);
+  }
 }));
 
 module.exports = router; 
