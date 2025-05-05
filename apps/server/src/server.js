@@ -18,6 +18,9 @@ const poiRoutes = require('./routes/poiRoutes');
 const socialRoutes = require('./routes/socialRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const challengeRoutes = require('./routes/challengeRoutes');
+const leaderboardRoutes = require('./routes/leaderboardRoutes');
+const achievementRoutes = require('./routes/achievementRoutes');
 
 // Import middlewares
 const { errorHandler } = require('./middleware/errorMiddleware');
@@ -48,6 +51,9 @@ app.use('/api/pois', poiRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/leaderboards', leaderboardRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 // Base route for API health check
 app.get('/', (req, res) => {

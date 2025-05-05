@@ -131,50 +131,68 @@ const listUsers = async (skip, limit, sortObj, filters) => {
 };
 
 /**
- * Segui un utente
- * @param {string} followerId - ID dell'utente che segue
- * @param {string} followedId - ID dell'utente da seguire
- * @returns {Promise<Object>} - Risultato dell'operazione
+ * Fa seguire un utente
+ * @param {string} userId - ID dell'utente che vuole seguire
+ * @param {string} targetUserId - ID dell'utente da seguire
+ * @returns {Promise<Object>} Risultato dell'operazione
  */
-const followUser = async (followerId, followedId) => {
-  // Verifica che gli utenti esistano
-  if (!mongoose.Types.ObjectId.isValid(followedId)) {
+const followUser = async (userId, targetUserId) => {
+  if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
     throw new Error('ID utente non valido');
   }
   
-  const followed = await User.findById(followedId);
-  if (!followed) {
+  if (userId === targetUserId) {
+    throw new Error('Non puoi seguire te stesso');
+  }
+  
+  const targetUser = await User.findById(targetUserId);
+  if (!targetUser) {
     throw new Error('Utente da seguire non trovato');
   }
   
-  const follower = await User.findById(followerId);
-  if (!follower) {
-    throw new Error('Utente follower non trovato');
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Utente non trovato');
   }
   
-  // Verifica se l'utente già segue
-  if (follower.connections.following.includes(followedId)) {
-    return { success: true, message: 'Stai già seguendo questo utente' };
+  // Verifica se già segue
+  const alreadyFollowing = user.connections.following.includes(targetUserId);
+  
+  if (alreadyFollowing) {
+    return {
+      success: false,
+      message: 'Stai già seguendo questo utente'
+    };
   }
   
-  // Verifica se l'utente è bloccato
-  if (followed.connections.blocked.includes(followerId) || 
-      follower.connections.blocked.includes(followedId)) {
-    throw new Error('Non puoi seguire questo utente');
+  // Aggiorna following dell'utente corrente
+  user.connections.following.push(targetUserId);
+  await user.save();
+  
+  // Aggiorna followers dell'utente target
+  targetUser.connections.followers.push(userId);
+  await targetUser.save();
+  
+  // Crea una notifica per l'utente seguito
+  try {
+    const notificationService = require('./notificationService');
+    await notificationService.createNotification({
+      recipient: targetUserId,
+      sender: userId,
+      type: 'follow',
+      content: {
+        text: `ha iniziato a seguirti`
+      }
+    });
+  } catch (error) {
+    console.error('Errore durante la creazione della notifica:', error);
+    // Non far fallire l'operazione di following se la notifica fallisce
   }
   
-  // Aggiorna le connessioni
-  await User.findByIdAndUpdate(
-    followerId,
-    { $addToSet: { 'connections.following': followedId } }
-  );
-  
-  await User.findByIdAndUpdate(
-    followedId,
-    { $addToSet: { 'connections.followers': followerId } }
-  );
-  
-  return { success: true, message: 'Hai iniziato a seguire questo utente' };
+  return {
+    success: true,
+    message: 'Ora stai seguendo questo utente'
+  };
 };
 
 /**

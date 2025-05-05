@@ -344,6 +344,37 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
   return R * c; // Distanza in metri
 };
 
+/**
+ * Ottiene le tracce per il feed degli utenti seguiti
+ * @param {Array} followingIds - Array di ID degli utenti seguiti
+ * @param {string} userId - ID dell'utente che fa la richiesta
+ * @param {number} skip - Elementi da saltare (paginazione)
+ * @param {number} limit - Numero di elementi da restituire
+ * @param {Object} sortObj - Oggetto per l'ordinamento
+ * @returns {Promise<Object>} - { tracks, total }
+ */
+const getFeedTracks = async (followingIds, userId, skip, limit, sortObj) => {
+  // Cerca le tracce pubbliche degli utenti seguiti
+  const query = {
+    userId: { $in: followingIds },
+    privacy: { $in: ['public', 'followers'] }
+  };
+  
+  // Se includiamo tracce con privacy 'followers', filtra ulteriormente
+  // in modo che l'utente possa vedere solo quelle degli utenti che segue
+  
+  const tracks = await Track.find(query)
+    .populate('userId', 'username name profileImage')
+    .populate('vehicleId', 'name type')
+    .sort(sortObj)
+    .skip(skip)
+    .limit(limit);
+  
+  const total = await Track.countDocuments(query);
+  
+  return { tracks, total };
+};
+
 module.exports = {
   createTrack,
   getTracks,
@@ -352,5 +383,6 @@ module.exports = {
   deleteTrack,
   getNearbyTracks,
   addPointOfInterest,
-  removePointOfInterest
+  removePointOfInterest,
+  getFeedTracks
 };
