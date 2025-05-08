@@ -1,10 +1,90 @@
+const jwt = require('jsonwebtoken');
 const admin = require('../config/firebaseAdmin');
 const User = require('../models/User');
 
 /**
- * Middleware per proteggere le rotte e verificare il token Firebase
+ * Middleware per proteggere le rotte e verificare il token JWT
  */
 const protect = async (req, res, next) => {
+  try {
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      // Ottiene il token dall'header Authorization
+      token = req.headers.authorization.split(' ')[1];
+
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'Non autorizzato, token non fornito',
+        });
+      }
+
+      try {
+        // Verifica JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Ottiene l'utente dal database
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+          return res.status(401).json({
+            success: false,
+            message: 'Utente non trovato',
+          });
+        }
+
+        // Aggiorna l'ultimo accesso
+        user.lastLogin = new Date();
+        await user.save();
+
+        // Aggiunge l'utente alla request
+        req.user = user;
+        next();
+      } catch (error) {
+        console.error('Auth error:', error);
+        
+        if (error.name === 'JsonWebTokenError') {
+          return res.status(401).json({
+            success: false,
+            message: 'Token non valido',
+          });
+        }
+        
+        if (error.name === 'TokenExpiredError') {
+          return res.status(401).json({
+            success: false,
+            message: 'Token scaduto',
+          });
+        }
+        
+        return res.status(401).json({
+          success: false,
+          message: 'Non autorizzato, errore di autenticazione',
+        });
+      }
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Non autorizzato, token non fornito',
+      });
+    }
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Errore di autenticazione',
+    });
+  }
+};
+
+/**
+ * Middleware legacy per supporto Firebase (compatibilità)
+ */
+const firebaseProtect = async (req, res, next) => {
   try {
     let token;
 
@@ -44,10 +124,10 @@ const protect = async (req, res, next) => {
         req.user = user;
         next();
       } catch (error) {
-        console.error('Auth error:', error);
+        console.error('Firebase auth error:', error);
         return res.status(401).json({
           success: false,
-          message: 'Non autorizzato, token non valido',
+          message: 'Non autorizzato, token Firebase non valido',
         });
       }
     } else {
@@ -57,10 +137,10 @@ const protect = async (req, res, next) => {
       });
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Firebase auth middleware error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Errore di autenticazione',
+      message: 'Errore di autenticazione Firebase',
     });
   }
 };
@@ -123,6 +203,7 @@ const ownerOrAdmin = (resourceModel) => async (req, res, next) => {
 
 module.exports = {
   protect,
+  firebaseProtect,
   adminOnly,
   ownerOrAdmin,
 }; 

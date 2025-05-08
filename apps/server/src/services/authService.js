@@ -1,5 +1,66 @@
 const User = require('../models/User');
 const admin = require('../config/firebaseAdmin');
+const bcrypt = require('bcryptjs');
+
+/**
+ * Registra un nuovo utente
+ * @param {string} email - Email dell'utente
+ * @param {string} password - Password dell'utente
+ * @param {string} displayName - Nome dell'utente
+ * @returns {Promise<Object>} - Oggetto con utente creato
+ */
+const registerUser = async (email, password, displayName) => {
+  // Controlla se l'email è già usata
+  const emailExists = await User.findOne({ email });
+  if (emailExists) {
+    throw new Error('Email già in uso');
+  }
+  
+  // Cripta password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+  
+  // Genera username unico
+  const username = await generateUniqueUsername(displayName || email.split('@')[0]);
+  
+  // Crea nuovo utente
+  const user = new User({
+    email,
+    password: hashedPassword,
+    username,
+    name: displayName || username,
+    lastLogin: new Date()
+  });
+  
+  await user.save();
+  
+  return { user };
+};
+
+/**
+ * Login utente
+ * @param {string} email - Email dell'utente
+ * @param {string} password - Password dell'utente
+ * @returns {Promise<Object>} - Oggetto con utente
+ */
+const loginUser = async (email, password) => {
+  // Cerca utente per email
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new Error('Credenziali non valide');
+  }
+  
+  // Verifica password
+  const isMatch = user.password 
+    ? await bcrypt.compare(password, user.password)
+    : false;
+  
+  if (!isMatch) {
+    throw new Error('Credenziali non valide');
+  }
+  
+  return { user };
+};
 
 /**
  * Sincronizza un utente Firebase con il database locale
@@ -59,21 +120,14 @@ const createAdminUser = async (email, password, name) => {
   // Genera username unico
   let username = await generateUniqueUsername(name);
   
-  // Crea utente in Firebase
-  const userRecord = await admin.auth().createUser({
-    email,
-    password,
-    displayName: name,
-    emailVerified: true
-  });
-  
-  // Assegna ruolo admin in Firebase (se si usa un sistema di ruoli in Firebase)
-  // await admin.auth().setCustomUserClaims(userRecord.uid, { admin: true });
+  // Cripta password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
   
   // Crea utente nel database con ruolo admin
   const newAdmin = await User.create({
-    firebaseUid: userRecord.uid,
     email,
+    password: hashedPassword,
     username,
     name,
     role: 'admin',
@@ -105,6 +159,8 @@ const generateUniqueUsername = async (baseName) => {
 };
 
 module.exports = {
+  registerUser,
+  loginUser,
   syncUserWithFirebase,
   createAdminUser
 }; 

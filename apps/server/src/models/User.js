@@ -5,8 +5,8 @@ const userSchema = new Schema({
   // Campi base
   firebaseUid: {
     type: String,
-    required: true,
-    unique: true
+    unique: true,
+    sparse: true  // Permette valori null/undefined e mantiene unicità
   },
   email: {
     type: String,
@@ -14,6 +14,12 @@ const userSchema = new Schema({
     unique: true,
     trim: true,
     lowercase: true
+  },
+  // Aggiungi campo password per autenticazione diretta
+  password: {
+    type: String,
+    // Non 'required' per supportare utenti sincronizzati da Firebase
+    select: false  // Non includere password nelle query per sicurezza
   },
   username: {
     type: String,
@@ -149,17 +155,20 @@ userSchema.methods.toPublicJSON = function() {
   
   // Rimuovi dati sensibili
   delete user.firebaseUid;
+  delete user.password;
   
   // Restituisci solo ciò che è pubblico
   return {
     id: user._id,
     username: user.username,
     name: user.name,
+    email: user.email,
     profileImage: user.profileImage,
     bio: user.bio,
     statistics: user.statistics,
-    followersCount: user.connections.followers.length,
-    followingCount: user.connections.following.length,
+    preferences: user.preferences,
+    followersCount: user.connections?.followers?.length || 0,
+    followingCount: user.connections?.following?.length || 0,
     createdAt: user.createdAt
   };
 };

@@ -1,0 +1,1 @@
+// File temporaneo per creare la cartella assets 

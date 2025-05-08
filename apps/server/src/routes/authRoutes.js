@@ -4,6 +4,27 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const authController = require('../controllers/authController');
 
 /**
+ * @route   POST /api/auth/register
+ * @desc    Registra un nuovo utente
+ * @access  Public
+ */
+router.post('/register', authController.register);
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Login utente
+ * @access  Public
+ */
+router.post('/login', authController.login);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Logout utente
+ * @access  Private
+ */
+router.post('/logout', protect, authController.logout);
+
+/**
  * @route   POST /api/auth/sync
  * @desc    Sincronizza utente Firebase con database locale
  * @access  Public
